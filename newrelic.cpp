@@ -217,6 +217,7 @@ public:
         app_name = RuntimeOption::EnvVariables["NEWRELIC_APP_NAME"];
         app_language = RuntimeOption::EnvVariables["NEWRELIC_APP_LANGUAGE"];
         app_language_version = RuntimeOption::EnvVariables["NEWRELIC_APP_LANGUAGE_VERSION"];
+        log_properties_file  = RuntimeOption::EnvVariables["NEWRELIC_LOG_PROPERTIES_FILE"];
 
         if (app_language.empty()) {
             app_language = "php-hhvm";
@@ -231,6 +232,7 @@ public:
         setenv("NEWRELIC_APP_NAME", app_name.c_str(), 1);
         setenv("NEWRELIC_APP_LANGUAGE", app_language.c_str(), 1);
         setenv("NEWRELIC_APP_LANGUAGE_VERSION", app_language_version.c_str(), 1);
+        setenv("NEWRELIC_LOG_PROPERTIES_FILE", log_properties_file.c_str(), 1);
 
         if (!license_key.empty() && !app_name.empty() && !app_language.empty() && !app_language_version.empty())
             config_loaded = true;
@@ -335,6 +337,7 @@ private:
     std::string app_name;
     std::string app_language;
     std::string app_language_version;
+    std::string log_properties_file;
     bool config_loaded;
 } s_newrelic_extension;
 
