@@ -321,6 +321,17 @@ function newrelic_pdo_intercept() {
     });
 }
 
+function newrelic_db_start($query) {
+    $a = _newrelic_parse_query($query);
+    return newrelic_segment_datastore_begin($a[1], $a[0], $query);
+}
+
+function newrelic_db_end($newrelic_segment) {
+    if (isset($newrelic_segment) && $newrelic_segment) {
+        newrelic_segment_end($newrelic_segment);
+    }
+}
+
 // mysqli
 function newrelic_mysqli_intercept() {
     fb_intercept('mysqli::hh_real_query', function ($name, $obj, $args, $data, &$done) {
