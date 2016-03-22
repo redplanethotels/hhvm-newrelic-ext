@@ -8,6 +8,7 @@
 #include "newrelic_common.h"
 #include "newrelic_profiler.h"
 #include "hphp/runtime/server/transport.h"
+#include "hphp/util/logger.h"
 
 #include <string>
 #include <iostream>
@@ -21,6 +22,7 @@ using namespace std;
 namespace HPHP {
 
 bool keep_running = true;
+bool r_transaction_name = false;
 
 class ScopedGenericSegment : public SweepableResourceData {
 public:
@@ -110,6 +112,8 @@ static int64_t HHVM_FUNCTION(newrelic_start_transaction_intern) {
 }
 
 static int64_t HHVM_FUNCTION(newrelic_name_transaction_intern, const String & name) {
+    r_transaction_name = true;
+    Logger::Info("Newrelic set transaction_name=%s", name.c_str());
     return newrelic_transaction_set_name(NEWRELIC_AUTOSCOPE, name.c_str());
 }
 
@@ -273,17 +277,14 @@ public:
     }
 
     virtual void requestShutdown() {
-
+        set_info_request_uri();
+        set_info_default_name();
+        set_info_request_headers();
         newrelic_transaction_end(NEWRELIC_AUTOSCOPE);
     }
 
-    void requestInit() override {
+    void set_info_request_uri() {
         auto serverVars = php_global(s__SERVER).toArray();
-
-        f_set_error_handler(s__NR_ERROR_CALLBACK);
-        f_set_exception_handler(s__NR_EXCEPTION_CALLBACK);
-        //TODO: make it possible to disable that via ini
-        newrelic_transaction_begin();
         String request_url = serverVars[s__REQUEST_URI].toString();
         String https = serverVars[s__HTTPS].toString();
         String http_host = serverVars[s__HTTP_HOST].toString();
@@ -302,21 +303,45 @@ public:
             full_uri += http_host + request_url;
         }
 
+        Logger::Info("Newrelic full_uri=%s", full_uri.c_str());
         newrelic_transaction_set_request_url(NEWRELIC_AUTOSCOPE, full_uri.c_str());
         //set request_url strips query parameter, add a custom attribute with the full param
         if (query_string != s__EMPTY) {
             newrelic_transaction_add_attribute(NEWRELIC_AUTOSCOPE, "FULL_URL", full_uri.c_str());
         }
+    }
 
-        //build transaction name
-        String transaction_name = request_url == s__EMPTY ? script_name : request_url;
-        size_t get_param_loc = transaction_name.find('?');
-        if(get_param_loc != string::npos) {
-            transaction_name = transaction_name.substr(0, get_param_loc);
+    void log_php_global_server() {
+        auto serverVars = php_global(s__SERVER).toArray();
+        Logger::Info("Newrelic _SERVER size: %zd", serverVars.size());
+        for (ArrayIter iter(serverVars); iter; ++iter) {
+          Variant key = iter.first();
+          if (key.isString()) {
+            String skey = key.toString();
+            Logger::Info("Newrelic _SERVER: %s / %s", skey.c_str(), skey.data());
+          }
         }
+    }
 
-        newrelic_transaction_set_name(NEWRELIC_AUTOSCOPE, transaction_name.c_str());
+    void set_info_default_name() {
+        //build transaction name
+        if (!r_transaction_name) {
+          auto serverVars = php_global(s__SERVER).toArray();
+          String request_url = serverVars[s__REQUEST_URI].toString();
+          String script_name = serverVars[s__SCRIPT_NAME].toString();
 
+          String transaction_name = request_url == s__EMPTY ? script_name : request_url;
+          size_t get_param_loc = transaction_name.find('?');
+          if(get_param_loc != string::npos) {
+            transaction_name = transaction_name.substr(0, get_param_loc);
+          }
+
+          Logger::Info("Newrelic default transaction_name=%s", transaction_name.c_str());
+          newrelic_transaction_set_name(NEWRELIC_AUTOSCOPE, transaction_name.c_str());
+        }
+    }
+
+    void set_info_request_headers() {
         // add http request headers to transaction attributes
         Transport *transport = g_context->getTransport();
         if (transport) {
@@ -338,7 +363,14 @@ public:
                 }
             }
         }
+    }
 
+    void requestInit() override {
+        f_set_error_handler(s__NR_ERROR_CALLBACK);
+        f_set_exception_handler(s__NR_EXCEPTION_CALLBACK);
+        //TODO: make it possible to disable that via ini
+
+        newrelic_transaction_begin();
     }
 
 private:
