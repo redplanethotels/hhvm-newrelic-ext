@@ -26,7 +26,7 @@ namespace HPHP {
 
     class NewRelicProfiler : public Profiler {
 
-        public:
+    public:
         // NEWOBJ existsonly until HHVM 3.4
         #ifdef NEWOBJ
             explicit NewRelicProfiler(int64_t mdepth) : max_depth(mdepth)  {}
@@ -41,8 +41,10 @@ namespace HPHP {
             return new NewRelicProfilerFrame();
         }
 
-        //virtual Frame *allocateFrame() override;
-        private:
+        void vscan(IMarker& mark) const override {
+        }
+
+    private:
 
         class NewRelicProfilerFrame : public Frame {
             public:
@@ -53,11 +55,9 @@ namespace HPHP {
             int64_t         m_nr_segement_code;
 
         };
+
         int max_depth;
     };
-
-
-
 
 }
 
