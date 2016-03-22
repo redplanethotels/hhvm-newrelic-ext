@@ -113,7 +113,7 @@ static int64_t HHVM_FUNCTION(newrelic_start_transaction_intern) {
 
 static int64_t HHVM_FUNCTION(newrelic_name_transaction_intern, const String & name) {
     r_transaction_name = true;
-    Logger::Info("Newrelic set transaction_name=%s", name.c_str());
+    // Logger::Info("Newrelic set transaction_name=%s", name.c_str());
     return newrelic_transaction_set_name(NEWRELIC_AUTOSCOPE, name.c_str());
 }
 
@@ -303,23 +303,11 @@ public:
             full_uri += http_host + request_url;
         }
 
-        Logger::Info("Newrelic full_uri=%s", full_uri.c_str());
+        // Logger::Info("Newrelic full_uri=%s", full_uri.c_str());
         newrelic_transaction_set_request_url(NEWRELIC_AUTOSCOPE, full_uri.c_str());
         //set request_url strips query parameter, add a custom attribute with the full param
         if (query_string != s__EMPTY) {
             newrelic_transaction_add_attribute(NEWRELIC_AUTOSCOPE, "FULL_URL", full_uri.c_str());
-        }
-    }
-
-    void log_php_global_server() {
-        auto serverVars = php_global(s__SERVER).toArray();
-        Logger::Info("Newrelic _SERVER size: %zd", serverVars.size());
-        for (ArrayIter iter(serverVars); iter; ++iter) {
-          Variant key = iter.first();
-          if (key.isString()) {
-            String skey = key.toString();
-            Logger::Info("Newrelic _SERVER: %s / %s", skey.c_str(), skey.data());
-          }
         }
     }
 
@@ -336,7 +324,7 @@ public:
             transaction_name = transaction_name.substr(0, get_param_loc);
           }
 
-          Logger::Info("Newrelic default transaction_name=%s", transaction_name.c_str());
+          // Logger::Info("Newrelic default transaction_name=%s", transaction_name.c_str());
           newrelic_transaction_set_name(NEWRELIC_AUTOSCOPE, transaction_name.c_str());
         }
     }
