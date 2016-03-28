@@ -358,6 +358,7 @@ public:
         f_set_exception_handler(s__NR_EXCEPTION_CALLBACK);
         //TODO: make it possible to disable that via ini
 
+        r_transaction_name = false;
         newrelic_transaction_begin();
     }
 
