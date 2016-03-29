@@ -258,6 +258,9 @@ function newrelic_set_external_profiler(int $maxdepth = 7): void;
 <<__Native>>
 function newrelic_custom_metric(string $name, float $value): int;
 
+<<__Native>>
+function newrelic_transaction_set_category(string $category): int;
+
 /**
  *    Core Overrides
  */

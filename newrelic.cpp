@@ -138,6 +138,10 @@ static int64_t HHVM_FUNCTION(newrelic_segment_generic_begin, const String & name
     return newrelic_segment_generic_begin(NEWRELIC_AUTOSCOPE, NEWRELIC_AUTOSCOPE, name.c_str());
 }
 
+static int64_t HHVM_FUNCTION(newrelic_transaction_set_category, const String & category) {
+    return newrelic_transaction_set_category(NEWRELIC_AUTOSCOPE, category.c_str());
+}
+
 /* This is a raw obfuscator implementation.
  * The returned string will be freed by the NR-library, so feel free to allocate it
  */
