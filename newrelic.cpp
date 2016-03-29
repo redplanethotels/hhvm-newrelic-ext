@@ -138,8 +138,22 @@ static int64_t HHVM_FUNCTION(newrelic_segment_generic_begin, const String & name
     return newrelic_segment_generic_begin(NEWRELIC_AUTOSCOPE, NEWRELIC_AUTOSCOPE, name.c_str());
 }
 
+/* This is a raw obfuscator implementation.
+ * The returned string will be freed by the NR-library, so feel free to allocate it
+ */
+static char * sql_obfuscator_raw(const char *sql)
+{
+    size_t len = strlen(sql);
+    char *sql_raw = (char*)malloc(len +1);
+    strncpy(sql_raw, sql, len);
+    sql_raw[len] = '\0';
+    // Logger::Info("NR Naked SQL: %s", sql_raw);
+    return sql_raw;
+}
+
+// TODO: implements the `sql_obfuscator` to more configurable
 static int64_t HHVM_FUNCTION(newrelic_segment_datastore_begin, const String & table, const String & operation, const String & sql, const String & sql_trace_rollup_name, const String & sql_obfuscator) {
-    return newrelic_segment_datastore_begin(NEWRELIC_AUTOSCOPE, NEWRELIC_AUTOSCOPE, table.c_str(), operation.c_str(), sql.c_str(), sql_trace_rollup_name.c_str(), NULL);
+    return newrelic_segment_datastore_begin(NEWRELIC_AUTOSCOPE, NEWRELIC_AUTOSCOPE, table.c_str(), operation.c_str(), sql.c_str(), sql_trace_rollup_name.c_str(), sql_obfuscator_raw);
 }
 
 static int64_t HHVM_FUNCTION(newrelic_segment_external_begin, const String & host, const String & name) {
@@ -209,6 +223,15 @@ static Variant HHVM_FUNCTION(newrelic_get_scoped_external_segment, const String 
     return Resource(segment);
 }
 
+static void newrelic_status_update(int status)
+{
+    if (status == NEWRELIC_STATUS_CODE_SHUTDOWN)
+    {
+        // do something when the agent shuts down
+        Logger::Info("Newrelic agent shuts down");
+    }
+}
+
 const StaticString
   s__NR_ERROR_CALLBACK("NewRelicExtensionHelper::errorCallback"),
   s__NR_EXCEPTION_CALLBACK("NewRelicExtensionHelper::exceptionCallback");
@@ -220,6 +243,7 @@ public:
     }
 
     virtual void init_newrelic() {
+        newrelic_register_status_callback(newrelic_status_update);
         newrelic_register_message_handler(newrelic_message_handler);
         newrelic_init(license_key.c_str(), app_name.c_str(), app_language.c_str(), app_language_version.c_str());
     }

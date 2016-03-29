@@ -45,7 +45,7 @@ Check on https://download.newrelic.com/agent_sdk/ for the latest version, curren
 ```
 mkdir newrelic
 cd newrelic
-wget https://download.newrelic.com/agent_sdk/nr_agent_sdk-v0.16.1.0-beta.x86_64.tar.gz
+wget https://download.newrelic.com/agent_sdk/nr_agent_sdk-v0.16.2.0-beta.x86_64.tar.gz
 tar -xzf nr_agent_sdk-*.tar.gz
 cp nr_agent_sdk-*/include/* /usr/local/include/
 cp nr_agent_sdk-*/lib/* /usr/local/lib/
