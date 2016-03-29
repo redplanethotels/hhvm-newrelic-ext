@@ -22,7 +22,7 @@ using namespace std;
 namespace HPHP {
 
 bool keep_running = true;
-bool r_transaction_name = false;
+bool __thread r_transaction_name = false;
 
 class ScopedGenericSegment : public SweepableResourceData {
 public:
