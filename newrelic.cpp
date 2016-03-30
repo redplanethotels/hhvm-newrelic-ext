@@ -168,7 +168,7 @@ static int64_t HHVM_FUNCTION(newrelic_segment_end, int64_t id) {
     return newrelic_segment_end(NEWRELIC_AUTOSCOPE, id);
 }
 
-static int64_t HHVM_FUNCTION(newrelic_notice_error_intern, const String & exception_type,  const String & error_message,  const String & stack_trace,  const String & stack_frame_delimiter) {
+static int64_t HHVM_FUNCTION(newrelic_notice_error_intern, const String & exception_type, const String & error_message, const String & stack_trace, const String & stack_frame_delimiter) {
     return newrelic_transaction_notice_error(NEWRELIC_AUTOSCOPE, exception_type.c_str(), error_message.c_str(), stack_trace.c_str(), stack_frame_delimiter.c_str());
 }
 
@@ -382,8 +382,8 @@ public:
     }
 
     void requestInit() override {
-        f_set_error_handler(s__NR_ERROR_CALLBACK);
-        f_set_exception_handler(s__NR_EXCEPTION_CALLBACK);
+        HHVM_FN(set_error_handler)(s__NR_ERROR_CALLBACK);
+        HHVM_FN(set_exception_handler)(s__NR_EXCEPTION_CALLBACK);
         //TODO: make it possible to disable that via ini
 
         r_transaction_name = false;

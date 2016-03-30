@@ -1,7 +1,7 @@
 <?hh
 
 //not implemented yet
-function newrelic_set_appname(string $name, string $key, bool $xmit): mixed {}
+function newrelic_set_appname(string $name, string $key, bool $xmit): mixed {}
 
 //The same as newrelic_add_attribute, but like in the officical NewRelic PHP API
 function newrelic_add_custom_parameter(string $name, string $value) {
@@ -11,7 +11,7 @@ function newrelic_add_custom_parameter(string $name, string $value) {
 //not implemented yet
 function newrelic_disable_autorum() {}
 
-function newrelic_notice_error(?string $error_message, \Exception $e = null)  {
+function newrelic_notice_error(?string $error_message, ?\Exception $e = null)  {
     if ($e) {
         if (!$error_message) {
             $error_message = $e->getMessage();
@@ -19,17 +19,21 @@ function newrelic_notice_error(?string $error_message, \Exception $e = null)  {
         $exception_type = get_class($e);
         $stack_trace = $e->getTraceAsString();
     } else {
+        if (!$error_message) {
+            $error_message = "";
+        }
         $exception_type = "";
         $stack_trace = NewRelicExtensionHelper::debug_backtrace_string();
     }
-        $stack_frame_delimiter = "\n";
-    newrelic_notice_error_intern( $exception_type,  $error_message,  $stack_trace,  $stack_frame_delimiter);
+
+    $stack_frame_delimiter = "\n";
+    newrelic_notice_error_intern( $exception_type,  $error_message,  $stack_trace, $stack_frame_delimiter);
 }
 
 //not implemented yet
 function newrelic_background_job(bool $true) {}
 
-function newrelic_start_transaction(string $appname = null, string $license = null): int {
+function newrelic_start_transaction(?string $appname = null, ?string $license = null): int {
     return newrelic_start_transaction_intern();
 }
 
@@ -86,7 +90,7 @@ class NewRelicExtensionHelper {
     protected static int $depth =  0;
     protected static int $maxdepth = 7;
 
-    static function profile (string $mode, string $name, array $options = null): void {
+    static function profile (string $mode, string $name, ?array $options = null): void {
         if ($name) {
             if ($mode == 'enter')  {
                 if (self::$depth < self::$maxdepth) {
@@ -102,7 +106,7 @@ class NewRelicExtensionHelper {
                         if ($id) {
                             newrelic_segment_end($id);
                         }
-                    } catch (Exception $e) {}
+                    } catch (\Exception $e) {}
                 }
                 self::$depth--;
             }
@@ -123,11 +127,11 @@ class NewRelicExtensionHelper {
         self::$depth = 0;
     }
 
-    static function errorCallback($type, $message, $c) {
+    static function errorCallback(int $errno, string $message) {
         $errno = $errno & error_reporting();
         if($errno == 0) return false;
 
-        $exception_type = self::friendlyErrorType($type);
+        $exception_type = self::friendlyErrorType($errno);
         $error_message = $message;
         $stack_trace = self::debug_backtrace_string();
         $stack_frame_delimiter = "\n";
@@ -135,7 +139,10 @@ class NewRelicExtensionHelper {
         return false;
     }
 
-    static function exceptionCallback($e) {
+    // NOTE:
+    // see: http://php.net/manual/en/function.set-exception-handler.php
+    // for type hint changes incase PHP7 support
+    static function exceptionCallback(\Exception $e) {
         $exception_type = get_class($e);
         $error_message = $e->getMessage();
         $stack_trace = $e->getTraceAsString();
@@ -167,9 +174,9 @@ class NewRelicExtensionHelper {
         return $stack;
     }
 
-    static function friendlyErrorType($type)
+    static function friendlyErrorType(int $errno)
     {
-        switch($type)
+        switch($errno)
         {
             case E_ERROR: // 1 //
                 return 'E_ERROR';
@@ -267,50 +274,52 @@ function newrelic_transaction_set_category(string $category): int;
 
 // sql helper/parser
 function _newrelic_parse_query($query): array {
-	if (preg_match( '/^\s*SELECT/i', $query)) {
-		if (preg_match('/\s+FROM\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
-			return ['select', $match[1]];
-		} else if (preg_match('/\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
-			return ['select', $match[1]];
-		} else {
-			return ['select', 'unknown'];
-		}
-	} else if (preg_match( '/^\s*INSERT/i', $query)) {
-		if (preg_match('/\s+INTO\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
-			return ['insert', $match[1]];
-		} else {
-			return ['insert', 'unknown'];
-		}
-	} else if (preg_match( '/^\s*UPDATE/i', $query)) {
-		if (preg_match('/UPDATE\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
-			return ['update', $match[1]];
-		} else {
-			return ['update', 'unknown'];
-		}
-	} else if (preg_match( '/^\s*DELETE/i', $query)) {
-		if (preg_match('/DELETE\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
-			return ['delete', $match[1]];
-		} else {
-			return ['delete', 'unknown'];
-		}
-	} else if (preg_match( '/^\s*SHOW/i', $query)) {
-		if (preg_match('/^\s*?(SHOW\s+[a-z\d_]+)/i', $query, $match)) {
-			return ['select', $match[1]];
-		} else {
-			return ['select', 'SHOW'];
-		}
-	} else if (preg_match( '/^\s*BEGIN/i', $query)) {
-		return ['select', 'BEGIN'];
-	} else if (preg_match( '/^\s*COMMIT/i', $query)) {
-		return ['select', 'COMMIT'];
-	} else if (preg_match( '/^\s*ROLLBACK/i', $query)) {
-		return ['select', 'ROLLBACK'];
+    $match=[];
+    if (preg_match( '/^\s*SELECT/i', $query)) {
+        if (preg_match('/\s+FROM\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
+            return ['select', $match[1]];
+        } else if (preg_match('/\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
+            return ['select', $match[1]];
+        } else {
+            return ['select', 'unknown'];
+        }
+    } else if (preg_match( '/^\s*INSERT/i', $query)) {
+        if (preg_match('/\s+INTO\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
+            return ['insert', $match[1]];
+        } else {
+            return ['insert', 'unknown'];
+        }
+    } else if (preg_match( '/^\s*UPDATE/i', $query)) {
+        if (preg_match('/UPDATE\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
+            return ['update', $match[1]];
+        } else {
+            return ['update', 'unknown'];
+        }
+    } else if (preg_match( '/^\s*DELETE/i', $query)) {
+        if (preg_match('/DELETE\s+[`\'"]?([a-z\d_\.]+)[`\'"]?/i', $query, $match)) {
+            return ['delete', $match[1]];
+        } else {
+            return ['delete', 'unknown'];
+        }
+    } else if (preg_match( '/^\s*SHOW/i', $query)) {
+        if (preg_match('/^\s*?(SHOW\s+[a-z\d_]+)/i', $query, $match)) {
+            return ['select', $match[1]];
+        } else {
+            return ['select', 'SHOW'];
+        }
+    } else if (preg_match( '/^\s*BEGIN/i', $query)) {
+        return ['select', 'BEGIN'];
+    } else if (preg_match( '/^\s*COMMIT/i', $query)) {
+        return ['select', 'COMMIT'];
+    } else if (preg_match( '/^\s*ROLLBACK/i', $query)) {
+        return ['select', 'ROLLBACK'];
         }
 
-	return ['select', 'undefined'];
+    return ['select', 'undefined'];
 }
 
 // PDO intercepts
+// see: https://jaredkipe.com/blog/website-development/newrelic-hhvm-automatic-segments/
 function newrelic_pdo_intercept() {
     // PDO::exec and PDO::query will be harder due to lifecycle of objects
     //fb_intercept('PDO::exec', function ($name, $obj, $args, $data, &$done) { $done=false;});
@@ -360,11 +369,9 @@ function _newrelic_mysqli_segment_end($name, $obj, $args, $data, &$done) {
     $done = false;
 }
 
-
-
-
 // file_get_contents (e.g. solr)
-function newrelic_file_get_contents(string $filename, bool $use_include_path = false, resource $context = null, int $offset = -1, int $maxlen = -1) {
+function newrelic_file_get_contents(string $filename, bool $use_include_path = false, ?resource $context = null, int $offset = -1, int $maxlen = -1) {
+
     $seg = newrelic_segment_external_begin($filename, 'file_get_contents');
     $resp = @obs_file_get_contents($filename, $use_include_path, $context, $offset, $maxlen);
     newrelic_segment_end($seg);
