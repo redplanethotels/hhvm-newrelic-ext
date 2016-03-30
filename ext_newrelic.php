@@ -369,12 +369,31 @@ function _newrelic_mysqli_segment_end($name, $obj, $args, $data, &$done) {
     $done = false;
 }
 
+function build_external_name_from_url(string $url): string {
+    $parsed = parse_url($url);
+    if (array_key_exists('scheme', $parsed)) {
+        $name = $parsed['scheme'];
+    } else {
+        $name = 'file://';
+    }
+    if (array_key_exists('host', $parsed)) {
+        $name .= $parsed['host'];
+        if (array_key_exists('port', $parsed)) {
+            $name .= ':'.$parsed['port'];
+        }
+    } else if (array_key_exists('path', $parsed)) {
+        $name .= basename($parsed['path']);
+    }
+    return $name;
+}
+
 // file_get_contents (e.g. solr)
 function newrelic_file_get_contents(string $filename, bool $use_include_path = false, ?resource $context = null, int $offset = -1, int $maxlen = -1) {
-
-    $seg = newrelic_segment_external_begin($filename, 'file_get_contents');
+    $name = build_external_name_from_url($filename);
+    $seg = newrelic_segment_external_begin($name, 'file_get_contents');
     $resp = @obs_file_get_contents($filename, $use_include_path, $context, $offset, $maxlen);
     newrelic_segment_end($seg);
+
     return $resp;
 }
 
@@ -383,27 +402,42 @@ function newrelic_file_get_contents_intercept() {
     fb_rename_function('newrelic_file_get_contents', 'file_get_contents');
 }
 
-
 // fread and fwrite (e.g. Redis)
 function newrelic_fread(resource $handle, int $length) {
-    if (stream_get_meta_data($handle)['wrapper_type'] != 'plainfile') {
-        $seg = newrelic_segment_external_begin('sock_read[' . stream_socket_get_name($handle,true) . ']', 'fread');
-    } else {
-        $seg = newrelic_segment_external_begin('file', 'fread');
+    $meta = stream_get_meta_data($handle);
+    $name = 'file';
+    if ($meta['wrapper_type'] != 'plainfile') {
+        if ($meta['stream_type'] == 'tcp_socket/ssl') {
+            $sock_name = stream_socket_get_name($handle, true);
+        } else {
+            $sock_name = $meta['wrapper_type'].':'.$meta['stream_type'];
+        }
+        $name = 'sock_read[' . $sock_name . ']';
     }
+
+    $seg = newrelic_segment_external_begin($name, 'fread');
     $resp = @obs_fread($handle, $length);
     newrelic_segment_end($seg);
+
     return $resp;
 }
 
 function newrelic_fwrite( resource $handle, string $string, int $length = -1 ) {
-    if (stream_get_meta_data($handle)['wrapper_type'] != 'plainfile') {
-        $seg = newrelic_segment_external_begin('sock_write[' . stream_socket_get_name($handle,true) . ']', 'fwrite');
-    } else {
-        $seg = newrelic_segment_external_begin('file', 'fwrite');
+    $meta = stream_get_meta_data($handle);
+    $name = 'file';
+    if ($meta['wrapper_type'] != 'plainfile') {
+        if ($meta['stream_type'] == 'tcp_socket/ssl') {
+            $sock_name = stream_socket_get_name($handle, true);
+        } else {
+            $sock_name = $meta['wrapper_type'].':'.$meta['stream_type'];
+        }
+        $name = 'sock_write[' . $sock_name . ']';
     }
+
+    $seg = newrelic_segment_external_begin($name, 'fwrite');
     $resp = @obs_fwrite($handle, $string, $length);
     newrelic_segment_end($seg);
+
     return $resp;
 }
 
@@ -437,7 +471,7 @@ function newrelic_socket_read(resource $socket, int $length, int $type = PHP_BIN
     } else {
         $seg = newrelic_segment_external_begin('file', 'socket_read');
     }
-    $resp = @obs_socket_read($socket, $length. $type);
+    $resp = @obs_socket_read($socket, $length, $type);
     newrelic_segment_end($seg);
     return $resp;
 }
