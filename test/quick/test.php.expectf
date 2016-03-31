@@ -1,4 +1,5 @@
 newrelic loaded: 1
+%s Initializing (version: 0.16.2.0)
 newrelic_start_transaction exists: 1
 newrelic_name_transaction exists: 1
 newrelic_transaction_set_request_url exists: 1
@@ -11,7 +12,7 @@ transaction_id: 1002
 name_error_code: 0
 request_url_error_code: 0
 generic_segment_id: 2
-datastore_segment_id: 0
-datastore_end_error_code: -196610
+datastore_segment_id: 3
+datastore_end_error_code: 0
 generic_end_error_code: 0
-end_error_code: -65537
+end_error_code: 0
