@@ -19,6 +19,7 @@
 #include <thread>
 #include <unistd.h>
 
+#include <sys/time.h>
 using namespace std;
 
 namespace HPHP {
@@ -250,6 +251,32 @@ static void newrelic_status_update(int status)
     }
 }
 
+static int64_t newrelic_msec_to_microsec(const String &t) {
+    String s = t;
+    int p = s.find('=');
+    if (p > 0) {
+        s = s.substr(p+1);
+    }
+    p = s.find('.');
+    if (p > 0) {
+        s = HHVM_FN(str_replace)(".", "", s);
+        s += "000";
+    }
+
+    return s.toInt64();
+}
+
+// see: hphp/runtime/base/timestamp.cpp
+static int64_t newrelic_current_microsec() {
+    struct timeval tp;
+    int64_t t;
+
+    gettimeofday(&tp, nullptr);
+    t = (tp.tv_sec * 1000000) + tp.tv_usec;
+
+    return t;
+}
+
 const StaticString
   s_NR_ERROR_CALLBACK("NewRelicExtensionHelper::errorCallback"),
   s_NR_EXCEPTION_CALLBACK("NewRelicExtensionHelper::exceptionCallback");
@@ -391,9 +418,16 @@ public:
                     newrelic_transaction_add_attribute(NEWRELIC_AUTOSCOPE, "request.headers.Accept-Language", values.back().c_str());
                 } else if (iter.first == "Api-Version") {
                     newrelic_transaction_add_attribute(NEWRELIC_AUTOSCOPE, "request.headers.Api-Version", values.back().c_str());
+                } else if (iter.first == "X-Request-Start") {
+                    set_info_request_queue(values.back());
                 }
             }
         }
+    }
+
+    void set_info_request_queue(const String &xRequestStart) {
+        int64_t rq = r_request_start - newrelic_msec_to_microsec(xRequestStart);
+        newrelic_record_metric("WebFrontend/QueueTime", (double)rq);
     }
 
     void requestInit() override {
@@ -402,6 +436,7 @@ public:
         //TODO: make it possible to disable that via ini
 
         r_transaction_name = false;
+        r_request_start = newrelic_current_microsec();
         newrelic_transaction_begin();
     }
 
