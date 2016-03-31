@@ -3,6 +3,8 @@
 #include "hphp/runtime/base/php-globals.h"
 #include "hphp/runtime/base/hphp-system.h"
 #include "hphp/runtime/ext/hotprofiler/ext_hotprofiler.h"
+#include "hphp/runtime/ext/string/ext_string.h"
+#include "hphp/runtime/ext/datetime/ext_datetime.h"
 #include "newrelic_transaction.h"
 #include "newrelic_collector_client.h"
 #include "newrelic_common.h"
@@ -21,8 +23,20 @@ using namespace std;
 
 namespace HPHP {
 
+const StaticString
+    s__SERVER("_SERVER"),
+    s_REQUEST_URI("REQUEST_URI"),
+    s_SCRIPT_NAME("SCRIPT_NAME"),
+    s_QUERY_STRING("QUERY_STRING"),
+    s_EMPTY(""),
+    s_HTTP_HOST("HTTP_HOST"),
+    s_HTTPS("HTTPS"),
+    s_PROTO_HTTP("http://"),
+    s_PROTO_HTTPS("https://");
+
 bool keep_running = true;
 bool __thread r_transaction_name = false;
+int64_t __thread r_request_start = 0;
 
 class ScopedGenericSegment : public SweepableResourceData {
 public:
@@ -237,8 +251,8 @@ static void newrelic_status_update(int status)
 }
 
 const StaticString
-  s__NR_ERROR_CALLBACK("NewRelicExtensionHelper::errorCallback"),
-  s__NR_EXCEPTION_CALLBACK("NewRelicExtensionHelper::exceptionCallback");
+  s_NR_ERROR_CALLBACK("NewRelicExtensionHelper::errorCallback"),
+  s_NR_EXCEPTION_CALLBACK("NewRelicExtensionHelper::exceptionCallback");
 
 static class NewRelicExtension : public Extension {
 public:
@@ -314,20 +328,20 @@ public:
 
     void set_info_request_uri() {
         auto serverVars = php_global(s__SERVER).toArray();
-        String request_url = serverVars[s__REQUEST_URI].toString();
-        String https = serverVars[s__HTTPS].toString();
-        String http_host = serverVars[s__HTTP_HOST].toString();
-        String script_name = serverVars[s__SCRIPT_NAME].toString();
-        String query_string = serverVars[s__QUERY_STRING].toString();
+        String request_url = serverVars[s_REQUEST_URI].toString();
+        String https = serverVars[s_HTTPS].toString();
+        String http_host = serverVars[s_HTTP_HOST].toString();
+        String script_name = serverVars[s_SCRIPT_NAME].toString();
+        String query_string = serverVars[s_QUERY_STRING].toString();
         String full_uri;
 
-        if (request_url == s__EMPTY) {
+        if (request_url == s_EMPTY) {
             full_uri = script_name;
         } else {
-            if (https == s__EMPTY) {
-                full_uri = s__PROTO_HTTP;
+            if (https == s_EMPTY) {
+                full_uri = s_PROTO_HTTP;
             } else {
-                full_uri = s__PROTO_HTTPS;
+                full_uri = s_PROTO_HTTPS;
             }
             full_uri += http_host + request_url;
         }
@@ -335,7 +349,7 @@ public:
         // Logger::Info("Newrelic full_uri=%s", full_uri.c_str());
         newrelic_transaction_set_request_url(NEWRELIC_AUTOSCOPE, full_uri.c_str());
         //set request_url strips query parameter, add a custom attribute with the full param
-        if (query_string != s__EMPTY) {
+        if (query_string != s_EMPTY) {
             newrelic_transaction_add_attribute(NEWRELIC_AUTOSCOPE, "FULL_URL", full_uri.c_str());
         }
     }
@@ -344,10 +358,10 @@ public:
         //build transaction name
         if (!r_transaction_name) {
           auto serverVars = php_global(s__SERVER).toArray();
-          String request_url = serverVars[s__REQUEST_URI].toString();
-          String script_name = serverVars[s__SCRIPT_NAME].toString();
+          String request_url = serverVars[s_REQUEST_URI].toString();
+          String script_name = serverVars[s_SCRIPT_NAME].toString();
 
-          String transaction_name = request_url == s__EMPTY ? script_name : request_url;
+          String transaction_name = request_url == s_EMPTY ? script_name : request_url;
           size_t get_param_loc = transaction_name.find('?');
           if(get_param_loc != string::npos) {
             transaction_name = transaction_name.substr(0, get_param_loc);
@@ -383,8 +397,8 @@ public:
     }
 
     void requestInit() override {
-        HHVM_FN(set_error_handler)(s__NR_ERROR_CALLBACK);
-        HHVM_FN(set_exception_handler)(s__NR_EXCEPTION_CALLBACK);
+        HHVM_FN(set_error_handler)(s_NR_ERROR_CALLBACK);
+        HHVM_FN(set_exception_handler)(s_NR_EXCEPTION_CALLBACK);
         //TODO: make it possible to disable that via ini
 
         r_transaction_name = false;
