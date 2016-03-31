@@ -427,7 +427,9 @@ public:
 
     void set_info_request_queue(const String &xRequestStart) {
         int64_t rq = r_request_start - newrelic_msec_to_microsec(xRequestStart);
-        newrelic_record_metric("WebFrontend/QueueTime", (double)rq);
+        float t = (double)rq/1000000.0;
+
+        newrelic_record_metric("WebFrontend/QueueTime", t);
     }
 
     void requestInit() override {
