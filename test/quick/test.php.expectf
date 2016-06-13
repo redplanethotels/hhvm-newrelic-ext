@@ -1,5 +1,4 @@
 newrelic loaded: 1
-%s Initializing (version: 0.16.2.0)
 newrelic_start_transaction exists: 1
 newrelic_name_transaction exists: 1
 newrelic_transaction_set_request_url exists: 1

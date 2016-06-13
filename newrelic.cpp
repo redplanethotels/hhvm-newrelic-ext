@@ -259,7 +259,8 @@ static int64_t newrelic_msec_to_microsec(const String &t) {
     }
     p = s.find('.');
     if (p > 0) {
-        s = HHVM_FN(str_replace)(".", "", s).toString();
+        auto tv = HHVM_FN(str_replace)(".", "", s);
+        s = tvAsCVarRef(&tv).toString();
         s += "000";
     }
 
