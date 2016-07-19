@@ -42,9 +42,6 @@ function newrelic_name_transaction(string $name): int {
 }
 
 //not implemented yet
-function newrelic_ignore_transaction() {}
-
-//not implemented yet
 function newrelic_ignore_apdex() {}
 
 function newrelic_profiling_enable(int $level) {
@@ -267,6 +264,9 @@ function newrelic_custom_metric(string $name, float $value): int;
 
 <<__Native>>
 function newrelic_transaction_set_category(string $category): int;
+
+<<__Native>>
+function newrelic_ignore_transaction(): bool;
 
 /**
  *    Core Overrides

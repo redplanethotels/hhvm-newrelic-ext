@@ -7,6 +7,7 @@ newrelic_end_transaction exists: 1
 newrelic_segment_generic_begin exists: 1
 newrelic_segment_datastore_begin exists: 1
 newrelic_segment_end exists: 1
+newrelic_ignore_transaction exists: 1
 transaction_id: 1002
 name_error_code: 0
 request_url_error_code: 0
@@ -14,4 +15,5 @@ generic_segment_id: 2
 datastore_segment_id: 3
 datastore_end_error_code: 0
 generic_end_error_code: 0
+ignore_transaction: 1
 end_error_code: 0

@@ -11,6 +11,7 @@ print("newrelic_end_transaction exists: ".function_exists("newrelic_end_transact
 print("newrelic_segment_generic_begin exists: ".function_exists("newrelic_segment_generic_begin")."\n");
 print("newrelic_segment_datastore_begin exists: ".function_exists("newrelic_segment_datastore_begin")."\n");
 print("newrelic_segment_end exists: ".function_exists("newrelic_segment_end")."\n");
+print("newrelic_ignore_transaction exists: ".function_exists("newrelic_ignore_transaction")."\n");
 
 $transaction_id = newrelic_start_transaction();
 print("transaction_id: ".$transaction_id."\n");
@@ -35,6 +36,9 @@ print("datastore_end_error_code: ".$datastore_end_error_code."\n");
 
 $generic_end_error_code = newrelic_segment_end($generic_segment_id);
 print("generic_end_error_code: ".$generic_end_error_code."\n");
+
+$ret = newrelic_ignore_transaction();
+print("ignore_transaction: ".$ret.PHP_EOL);
 
 $end_error_code = newrelic_end_transaction();
 print("end_error_code: ".$end_error_code."\n");

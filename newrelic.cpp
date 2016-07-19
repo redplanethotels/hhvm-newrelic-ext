@@ -242,6 +242,14 @@ static Variant HHVM_FUNCTION(newrelic_get_scoped_external_segment, const String 
     return Resource(segment);
 }
 
+static bool HHVM_FUNCTION(newrelic_ignore_transaction) {
+    int ret = newrelic_transaction_set_type_other(NEWRELIC_AUTOSCOPE);
+
+    // Logger::Info("Newrelic ignore/set other");
+
+    return ret == 0;
+}
+
 static void newrelic_status_update(int status)
 {
     if (status == NEWRELIC_STATUS_CODE_SHUTDOWN)
@@ -344,6 +352,7 @@ public:
         HHVM_FE(newrelic_set_external_profiler);
         HHVM_FE(newrelic_custom_metric);
         HHVM_FE(newrelic_transaction_set_category);
+        HHVM_FE(newrelic_ignore_transaction);
         loadSystemlib();
     }
 
